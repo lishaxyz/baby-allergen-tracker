@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Allergen Tracker" />
+  <meta name="theme-color" content="#1e2a3a" />
+  <title>Allergen Tracker</title>
+  <style>
+    :root {
+      --navy: #1e2a3a;
+      --navy-light: #2c3e52;
+      --white: #ffffff;
+      --off-white: #f5f7fa;
+      --card-bg: #ffffff;
+      --text: #1a2332;
+      --text-secondary: #6b7a8d;
+      --text-muted: #a0acba;
+      --green: #27ae60;
+      --green-light: #e8f8ef;
+      --amber: #f39c12;
+      --amber-light: #fef9e7;
+      --red: #e74c3c;
+      --red-light: #fdf0ef;
+      --blue: #3498db;
+      --border: rgba(0,0,0,0.07);
+      --shadow: 0 2px 12px rgba(0,0,0,0.08);
+      --shadow-lg: 0 8px 32px rgba(0,0,0,0.14);
+      --radius: 20px;
+      --radius-sm: 14px;
+      --radius-xs: 10px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Rounded', 'Segoe UI', system-ui, sans-serif;
+      background: var(--navy);
+      color: var(--text);
+      min-height: 100vh;
+      min-height: -webkit-fill-available;
+      overscroll-behavior: none;
+    }
+
+    #app { max-width: 430px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* ── Navy Header ── */
+    .header {
+      background: var(--navy);
+      padding: 52px 20px 24px;
+      flex-shrink: 0;
+    }
+    .header-inner { display: flex; align-items: center; justify-content: space-between; }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .avatar {
+      width: 48px; height: 48px; border-radius: 50%;
+      background: linear-gradient(135deg, #ffb3c6, #ff6b9d);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; flex-shrink: 0;
+      border: 2px solid rgba(255,255,255,0.15);
+    }
+    .header-name { font-size: 20px; font-weight: 800; color: var(--white); line-height: 1.1; }
+    .header-sub { font-size: 13px; color: rgba(255,255,255,0.5); font-weight: 500; margin-top: 2px; }
+    .header-btn {
+      width: 40px; height: 40px; border-radius: 12px;
+      background: rgba(255,255,255,0.1); border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px; color: white;
+    }
+
+    /* ── White sheet ── */
+    .sheet {
+      flex: 1; background: var(--off-white);
+      border-radius: 28px 28px 0 0;
+      overflow: hidden; display: flex; flex-direction: column;
+    }
+
+    /* ── Summary strip ── */
+    .summary-strip {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 10px; padding: 18px 16px 16px;
+      background: var(--white); border-bottom: 1px solid var(--border);
+    }
+    .summary-pill {
+      background: var(--off-white); border-radius: var(--radius-xs);
+      padding: 12px 8px; text-align: center;
+    }
+    .summary-num { font-size: 26px; font-weight: 800; line-height: 1; display: block; }
+    .summary-lbl { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; margin-top: 3px; display: block; }
+    .summary-pill.s-green .summary-num { color: var(--green); }
+    .summary-pill.s-amber .summary-num { color: var(--amber); }
+    .summary-pill.s-blue .summary-num { color: var(--blue); }
+
+    /* ── Scroll area ── */
+    .scroll-area { flex: 1; overflow-y: auto; padding: 12px 16px 90px; }
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* ── Section label ── */
+    .section-label {
+      font-size: 11px; font-weight: 700; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.8px;
+      margin: 32px 0 10px;
+    }
+    .section-label:first-child { margin-top: 4px; }
+    .section-gap { padding-top: 24px; }
+
+    /* ── 2-col grid ── */
+    .allergen-grid-2col { display: flex; flex-direction: column; gap: 10px; }
+
+    /* ── Photo card ── */
+    .allergen-photo-card {
+      background: var(--card-bg); border-radius: var(--radius-sm);
+      overflow: hidden; cursor: pointer; box-shadow: var(--shadow);
+      transition: transform 0.15s;
+      display: flex; flex-direction: row; align-items: stretch;
+    }
+    .allergen-photo-card:active { transform: scale(0.98); }
+
+    .card-photo {
+      width: 72px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      position: relative; overflow: hidden;
+    }
+    .card-emoji-large { font-size: 32px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.12)); }
+    .card-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .card-emoji-fallback { font-size: 32px; }
+    .card-overlay-top {
+      position: absolute; top: 6px; left: 6px; right: 6px;
+      display: flex; justify-content: flex-end; align-items: flex-start;
+    }
+    .allergen-badge {
+      display: none;
+    }
+    .quick-log-btn {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: rgba(255,255,255,0.93); border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 400; color: var(--text);
+      line-height: 1;
+    }
+
+    .card-info {
+      flex: 1; padding: 12px 14px;
+      display: flex; flex-direction: column; justify-content: center;
+    }
+    .card-top-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+    .card-name { font-size: 15px; font-weight: 700; color: var(--text); }
+    .card-sub { font-size: 11px; color: var(--text-secondary); font-weight: 500; }
+    .card-bottom-row { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; }
+    .card-progress { display: flex; gap: 3px; align-items: center; }
+    .prog-dot { width: 7px; height: 7px; border-radius: 50%; background: #e0e4ea; }
+    .prog-dot.pg { background: var(--green); }
+    .prog-dot.pa { background: var(--amber); }
+    .prog-dot.pr { background: var(--red); }
+    .prog-label { font-size: 10px; color: var(--text-muted); font-weight: 600; margin-left: 4px; }
+    .card-status-badge {
+      font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 20px;
+    }
+    .card-status-badge.badge-overdue { background: var(--red-light); color: var(--red); }
+    .card-status-badge.badge-due-soon { background: var(--amber-light); color: var(--amber); }
+    .card-status-badge.badge-on-track { background: var(--green-light); color: var(--green); }
+    .card-status-badge.badge-not-started { background: var(--off-white); color: var(--text-muted); }
+
+    /* ── History ── */
+    .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; margin-top: 4px; }
+    .history-title { font-size: 18px; font-weight: 800; color: var(--text); }
+    .btn-export {
+      font-family: inherit; font-size: 12px; font-weight: 600;
+      color: var(--green); background: var(--green-light); border: none;
+      border-radius: 20px; padding: 6px 14px; cursor: pointer;
+    }
+    .history-empty { text-align: center; padding: 60px 0; color: var(--text-muted); font-size: 14px; }
+    .history-empty .ei { font-size: 44px; margin-bottom: 12px; }
+
+    .log-card {
+      background: var(--white); border-radius: var(--radius-sm);
+      padding: 13px 14px; margin-bottom: 9px; box-shadow: var(--shadow);
+      display: flex; gap: 12px; align-items: flex-start;
+    }
+    .log-icon { width: 44px; height: 44px; border-radius: 12px; background: var(--off-white); display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; }
+    .log-body { flex: 1; min-width: 0; }
+    .log-top { display: flex; justify-content: space-between; align-items: baseline; }
+    .log-name { font-size: 14px; font-weight: 700; color: var(--text); }
+    .log-time { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+    .log-amount { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+    .log-tag { display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 8px; margin-top: 5px; }
+    .tag-none { background: var(--green-light); color: var(--green); }
+    .tag-mild { background: var(--amber-light); color: var(--amber); }
+    .tag-moderate { background: var(--red-light); color: var(--red); }
+    .tag-severe { background: var(--red); color: white; }
+    .delete-btn {
+      background: none; border: none; cursor: pointer;
+      font-size: 16px; opacity: 0.35; padding: 4px;
+      flex-shrink: 0; align-self: center;
+      transition: opacity 0.15s;
+    }
+    .delete-btn:active { opacity: 0.8; }
+
+    /* ── Bottom nav ── */
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+      width: 100%; max-width: 430px;
+      background: var(--white); border-top: 1px solid var(--border);
+      display: flex; padding: 8px 0 20px; z-index: 20;
+    }
+    .nav-item {
+      flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+      background: none; border: none; cursor: pointer; padding: 4px 0;
+    }
+    .nav-icon { font-size: 22px; line-height: 1; }
+    .nav-label { font-family: inherit; font-size: 10px; font-weight: 600; color: var(--text-muted); }
+    .nav-item.active .nav-label { color: var(--navy); }
+    .nav-fab {
+      flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+      background: none; border: none; cursor: pointer; padding: 0; margin-top: -22px;
+    }
+    .nav-fab-circle {
+      width: 54px; height: 54px; border-radius: 50%; background: var(--navy);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px; color: white; box-shadow: 0 4px 18px rgba(30,42,58,0.35);
+      transition: transform 0.15s;
+    }
+    .nav-fab:active .nav-fab-circle { transform: scale(0.93); }
+    .nav-fab .nav-label { color: var(--text-muted); font-size: 10px; font-weight: 600; font-family: inherit; }
+
+    /* ── Modals ── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(10,18,28,0.55);
+      backdrop-filter: blur(6px); z-index: 100;
+      display: none; align-items: flex-end; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--white); border-radius: 28px 28px 0 0;
+      padding: 12px 20px 48px; width: 100%; max-width: 430px;
+      max-height: 92vh; overflow-y: auto;
+      animation: slideUp 0.3s cubic-bezier(0.34,1.4,0.64,1);
+    }
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    .modal-handle { width: 36px; height: 4px; background: #e0e4ea; border-radius: 2px; margin: 0 auto 20px; }
+    .modal-title { font-size: 22px; font-weight: 800; color: var(--text); margin-bottom: 4px; }
+    .modal-subtitle { font-size: 13px; color: var(--text-secondary); margin-bottom: 20px; font-weight: 500; }
+
+    .allergen-pick-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 20px; }
+    .allergen-pick-btn {
+      background: var(--off-white); border: 2px solid transparent;
+      border-radius: var(--radius-sm); padding: 12px 6px; cursor: pointer; text-align: center;
+      transition: all 0.15s;
+    }
+    .allergen-pick-btn .pe { font-size: 24px; display: block; margin-bottom: 5px; }
+    .allergen-pick-btn .pn { font-size: 11px; font-weight: 600; color: var(--text-secondary); font-family: inherit; }
+    .allergen-pick-btn.selected { background: var(--navy); border-color: var(--navy); }
+    .allergen-pick-btn.selected .pn { color: rgba(255,255,255,0.8); }
+
+    .field { margin-bottom: 16px; }
+    .field label { display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 7px; }
+    .field input, .field textarea {
+      width: 100%; background: var(--off-white); border: 1.5px solid transparent;
+      border-radius: var(--radius-xs); padding: 13px 14px;
+      font-family: inherit; font-size: 15px; font-weight: 500;
+      color: var(--text); outline: none; -webkit-appearance: none; transition: border-color 0.15s;
+    }
+    .field input:focus, .field textarea:focus { border-color: var(--navy); background: var(--white); }
+    .field textarea { resize: none; height: 80px; }
+
+    .reaction-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .reaction-btn {
+      background: var(--off-white); border: 2px solid transparent; border-radius: var(--radius-xs);
+      padding: 11px 8px; cursor: pointer; font-family: inherit;
+      font-size: 13px; font-weight: 600; color: var(--text-secondary); text-align: center; transition: all 0.15s;
+    }
+    .reaction-btn.selected { background: var(--navy); color: white; border-color: var(--navy); }
+    .reaction-btn.rr.selected { background: var(--red); border-color: var(--red); }
+
+    .btn-primary {
+      width: 100%; background: var(--navy); color: white; border: none;
+      border-radius: var(--radius-sm); padding: 16px;
+      font-family: inherit; font-size: 16px; font-weight: 700;
+      cursor: pointer; margin-top: 8px; transition: opacity 0.15s;
+    }
+    .btn-primary:active { opacity: 0.85; }
+    .btn-secondary {
+      width: 100%; background: var(--off-white); color: var(--text-secondary); border: none;
+      border-radius: var(--radius-sm); padding: 14px;
+      font-family: inherit; font-size: 15px; font-weight: 600;
+      cursor: pointer; margin-top: 8px;
+    }
+
+    .detail-photo { width: 80px; height: 80px; border-radius: 20px; background: var(--off-white); display: flex; align-items: center; justify-content: center; font-size: 44px; margin-bottom: 12px; }
+    .detail-name { font-size: 26px; font-weight: 800; }
+    .detail-target { font-size: 13px; color: var(--text-secondary); margin-top: 3px; font-weight: 500; }
+    .stat-row { display: flex; gap: 10px; margin: 16px 0; }
+    .stat-box { flex: 1; background: var(--off-white); border-radius: var(--radius-xs); padding: 13px 10px; text-align: center; }
+    .stat-val { font-size: 22px; font-weight: 800; color: var(--text); display: block; }
+    .stat-lbl { font-size: 10px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+    .recent-heading { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 10px; }
+
+    /* ── Long press ring ── */
+    .allergen-photo-card { user-select: none; }
+    .allergen-photo-card .card-photo::after {
+      content: '';
+      position: absolute; inset: 0;
+      border-radius: 0;
+      background: rgba(30,42,58,0);
+      transition: background 0s;
+      pointer-events: none;
+    }
+    .allergen-photo-card.pressing .card-photo::after {
+      background: rgba(30,42,58,0.18);
+      transition: background 0.6s;
+    }
+    .press-ring {
+      position: absolute;
+      width: 70px; height: 70px;
+      border-radius: 50%;
+      border: 3px solid rgba(255,255,255,0.9);
+      top: 50%; left: 50%;
+      transform: translate(-50%,-50%) scale(0);
+      pointer-events: none;
+      opacity: 0;
+    }
+    .allergen-photo-card.pressing .press-ring {
+      animation: ringGrow 0.6s cubic-bezier(0.25,0.46,0.45,0.94) forwards;
+    }
+    @keyframes ringGrow {
+      0%   { transform: translate(-50%,-50%) scale(0); opacity: 1; }
+      80%  { transform: translate(-50%,-50%) scale(1); opacity: 1; }
+      100% { transform: translate(-50%,-50%) scale(1.05); opacity: 0.6; }
+    }
+
+    .toast {
+      position: fixed; bottom: 90px; left: 50%;
+      transform: translateX(-50%) translateY(14px);
+      background: var(--navy); color: white; padding: 12px 22px;
+      border-radius: 24px; font-family: inherit;
+      font-size: 14px; font-weight: 600; z-index: 200;
+      opacity: 0; transition: all 0.28s; pointer-events: none;
+      white-space: nowrap; box-shadow: var(--shadow-lg);
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <div class="header">
+    <div class="header-inner">
+      <div class="header-left">
+        <div class="avatar">🌱</div>
+        <div>
+          <div class="header-name" id="headerName">My Baby</div>
+          <div class="header-sub">Allergen tracker</div>
+        </div>
+      </div>
+      <button class="header-btn" onclick="openNameModal()">✎</button>
+    </div>
+  </div>
+
+  <div class="sheet">
+    <div class="summary-strip">
+      <div class="summary-pill s-green">
+        <span class="summary-num" id="stat-introduced">0</span>
+        <span class="summary-lbl">Introduced</span>
+      </div>
+      <div class="summary-pill s-amber">
+        <span class="summary-num" id="stat-overdue">0</span>
+        <span class="summary-lbl">Overdue</span>
+      </div>
+      <div class="summary-pill s-blue">
+        <span class="summary-num" id="stat-pending">0</span>
+        <span class="summary-lbl">Pending</span>
+      </div>
+    </div>
+
+    <div class="scroll-area">
+
+      <div id="view-dashboard" class="view active">
+        <div id="overdue-section" style="display:none">
+          <div class="section-label">⚠️ Needs attention</div>
+          <div class="allergen-grid-2col" id="overdue-list"></div>
+        </div>
+        <div id="ontrack-section" class="section-gap" style="display:none">
+          <div class="section-label">✓ On track</div>
+          <div class="allergen-grid-2col" id="ontrack-list"></div>
+        </div>
+        <div id="pending-section" class="section-gap" style="display:none">
+          <div class="section-label">Not yet introduced</div>
+          <div class="allergen-grid-2col" id="pending-list"></div>
+        </div>
+      </div>
+
+      <div id="view-history" class="view">
+        <div class="history-header">
+          <div class="history-title">All feedings</div>
+          <button class="btn-export" onclick="exportCSV()">Export CSV</button>
+        </div>
+        <div id="history-list"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="bottom-nav">
+    <button class="nav-item active" id="nav-dashboard" onclick="showView('dashboard', this)">
+      <span class="nav-icon">🏠</span>
+      <span class="nav-label">Dashboard</span>
+    </button>
+    <button class="nav-fab" onclick="openLogModal()">
+      <div class="nav-fab-circle">＋</div>
+      <span class="nav-label">Log</span>
+    </button>
+    <button class="nav-item" id="nav-history" onclick="showView('history', this)">
+      <span class="nav-icon">📋</span>
+      <span class="nav-label">History</span>
+    </button>
+  </div>
+
+</div>
+
+<!-- Log Modal -->
+<div class="modal-overlay" id="logModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Log a feeding</div>
+    <div class="modal-subtitle" id="logModalSubtitle">Which allergen did baby have today?</div>
+    <div class="allergen-pick-grid" id="allergenPicker"></div>
+    <div id="logFormFields" style="display:none">
+      <div class="field"><label>Date &amp; Time</label><input type="datetime-local" id="logDateTime" /></div>
+      <div class="field"><label>Amount / Form</label><input type="text" id="logAmount" placeholder="e.g. 2 tsp peanut butter, scrambled egg" /></div>
+      <div class="field">
+        <label>Reaction</label>
+        <div class="reaction-grid">
+          <button class="reaction-btn selected" data-reaction="none" onclick="selectReaction(this)">😊 None</button>
+          <button class="reaction-btn" data-reaction="mild" onclick="selectReaction(this)">😕 Mild</button>
+          <button class="reaction-btn" data-reaction="moderate" onclick="selectReaction(this)">😟 Moderate</button>
+          <button class="reaction-btn rr" data-reaction="severe" onclick="selectReaction(this)">🚨 Severe</button>
+        </div>
+      </div>
+      <div class="field"><label>Notes (optional)</label><textarea id="logNotes" placeholder="Any observations…"></textarea></div>
+    </div>
+    <button class="btn-primary" id="logSaveBtn" onclick="saveLog()" style="display:none">Save feeding</button>
+    <button class="btn-secondary" onclick="closeModal('logModal')">Cancel</button>
+  </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal" id="detailModalContent"></div>
+</div>
+
+<!-- Name Modal -->
+<div class="modal-overlay" id="nameModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Baby's name</div>
+    <div class="modal-subtitle">Personalise your tracker</div>
+    <div class="field"><label>Name</label><input type="text" id="babyNameInput" placeholder="e.g. Mila" /></div>
+    <button class="btn-primary" onclick="saveBabyName()">Save</button>
+    <button class="btn-secondary" onclick="closeModal('nameModal')">Cancel</button>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal" style="padding-bottom: 32px;">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Delete this log?</div>
+    <div class="modal-subtitle">This can't be undone.</div>
+    <button class="btn-primary" style="background: var(--red);" onclick="confirmDelete()">Yes, delete</button>
+    <button class="btn-secondary" onclick="closeModal('deleteModal')">Cancel</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const ALLERGENS = [
+  { id:'peanut',    name:'Peanut',    emoji:'🥜', bg:'linear-gradient(135deg,#ffe0a3,#ffb347)', targetPerWeek:3, targetDays:2 },
+  { id:'egg',       name:'Egg',       emoji:'🥚', bg:'linear-gradient(135deg,#ffecd2,#fcb69f)', targetPerWeek:1, targetDays:7 },
+  { id:'milk',      name:'Milk',      emoji:'🥛', bg:'linear-gradient(135deg,#e0f7fa,#b2ebf2)', targetPerWeek:1, targetDays:7 },
+  { id:'wheat',     name:'Wheat',     emoji:'🌾', bg:'linear-gradient(135deg,#f9f586,#f5c842)', targetPerWeek:1, targetDays:7 },
+  { id:'soy',       name:'Soy',       emoji:'🫘', bg:'linear-gradient(135deg,#d4fc79,#96e6a1)', targetPerWeek:1, targetDays:7 },
+  { id:'treenut',   name:'Tree Nuts', emoji:'🌰', bg:'linear-gradient(135deg,#e8c99a,#c8894e)', targetPerWeek:1, targetDays:7 },
+  { id:'sesame',    name:'Sesame',    emoji:'𓇢', bg:'linear-gradient(135deg,#fff3b0,#e9c46a)', targetPerWeek:1, targetDays:7 },
+  { id:'fish',      name:'Fish',      emoji:'🐟', bg:'linear-gradient(135deg,#a8edea,#5eb8d4)', targetPerWeek:1, targetDays:7 },
+  { id:'shellfish', name:'Shellfish', emoji:'🦐', bg:'linear-gradient(135deg,#ffe0e6,#ffb3c1)', targetPerWeek:1, targetDays:7 },
+];
+
+const getData = () => JSON.parse(localStorage.getItem('allergen_logs') || '[]');
+const saveData = d => localStorage.setItem('allergen_logs', JSON.stringify(d));
+const getBabyName = () => localStorage.getItem('baby_name') || null;
+
+let selectedAllergen = null, selectedReaction = 'none';
+
+document.addEventListener('DOMContentLoaded', () => { updateHeader(); renderDashboard(); renderHistory(); setNow(); });
+
+function setNow() {
+  const el = document.getElementById('logDateTime');
+  if (!el) return;
+  const n = new Date(); n.setMinutes(n.getMinutes() - n.getTimezoneOffset());
+  el.value = n.toISOString().slice(0,16);
+}
+
+function showView(name, btn) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(t => t.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (name === 'history') renderHistory();
+  else renderDashboard();
+}
+
+function getAllergenStatus(a, logs) {
+  const ml = logs.filter(l => l.allergenId === a.id).sort((x,y) => new Date(y.datetime) - new Date(x.datetime));
+  if (!ml.length) return { status:'not-started', lastFed:null, daysSince:null, weeksFeedings:0 };
+  const lastFed = new Date(ml[0].datetime);
+  const now = new Date();
+  const daysSince = Math.floor((now - lastFed) / 86400000);
+  const weeksFeedings = ml.filter(l => new Date(l.datetime) > new Date(now - 7*86400000)).length;
+  const status = daysSince > a.targetDays + 2 ? 'overdue' : daysSince >= a.targetDays ? 'due-soon' : 'on-track';
+  return { status, lastFed, daysSince, weeksFeedings };
+}
+
+function renderDashboard() {
+  const logs = getData();
+  let introduced = 0, overdue = 0, pending = 0;
+  const ov=[], on=[], pe=[];
+  ALLERGENS.forEach(a => {
+    const s = getAllergenStatus(a, logs);
+    if (s.status === 'not-started') { pending++; pe.push({a,s}); }
+    else { introduced++; (s.status === 'overdue' || s.status === 'due-soon') ? (overdue++, ov.push({a,s})) : on.push({a,s}); }
+  });
+  document.getElementById('stat-introduced').textContent = introduced;
+  document.getElementById('stat-overdue').textContent = overdue;
+  document.getElementById('stat-pending').textContent = pending;
+
+  const show = (sectionId, listId, items) => {
+    const sec = document.getElementById(sectionId);
+    if (items.length) { sec.style.display=''; sec.style.paddingTop = sectionId === 'overdue-section' ? '0' : '16px'; document.getElementById(listId).innerHTML = items.map(({a,s})=>cardHTML(a,s)).join(''); }
+    else sec.style.display='none';
+  };
+  show('overdue-section','overdue-list',ov);
+  show('ontrack-section','ontrack-list',on);
+  show('pending-section','pending-list',pe);
+}
+
+function cardHTML(a, s) {
+  const badgeMap = {
+    'overdue':     { cls:'badge-overdue',     lbl:'Overdue' },
+    'due-soon':    { cls:'badge-due-soon',     lbl:'Due soon' },
+    'on-track':    { cls:'badge-on-track',     lbl:'On track' },
+    'not-started': { cls:'badge-not-started',  lbl:'Not started' },
+  };
+  const { cls: bcls, lbl: blbl } = badgeMap[s.status] || badgeMap['not-started'];
+  const sub = s.lastFed ? (s.daysSince===0?'Today':s.daysSince===1?'Yesterday':`${s.daysSince}d ago`) : `${a.targetPerWeek}× / week`;
+  const dc = s.status==='overdue'?'pr':s.status==='due-soon'?'pa':'pg';
+  const dots = Array.from({length:a.targetPerWeek},(_,i)=>`<div class="prog-dot ${i<s.weeksFeedings?dc:''}"></div>`).join('');
+  return `<div class="allergen-photo-card" onclick="openLogModal('${a.id}')" data-id="${a.id}">
+    <div class="card-photo" style="background:${a.bg}">
+      <span class="card-emoji-large">${a.emoji}</span>
+      <div class="press-ring"></div>
+    </div>
+    <div class="card-info">
+      <div class="card-top-row">
+        <div class="card-name">${a.name}</div>
+        <span class="card-status-badge ${bcls}">${blbl}</span>
+      </div>
+      <div class="card-sub">${sub}</div>
+      <div class="card-bottom-row">
+        <div class="card-progress">${dots}<span class="prog-label">${s.weeksFeedings}/${a.targetPerWeek} this week</span></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderHistory() {
+  const logs = getData().sort((a,b)=>new Date(b.datetime)-new Date(a.datetime));
+  const el = document.getElementById('history-list');
+  if (!logs.length) { el.innerHTML=`<div class="history-empty"><div class="ei">📋</div>No feedings logged yet.<br>Tap <strong>+</strong> to start.</div>`; return; }
+  el.innerHTML = logs.map(log => {
+    const a = ALLERGENS.find(x=>x.id===log.allergenId); if (!a) return '';
+    const dt = new Date(log.datetime);
+    const ts = dt.toLocaleDateString('en-CA',{month:'short',day:'numeric'})+' · '+dt.toLocaleTimeString('en-CA',{hour:'numeric',minute:'2-digit'});
+    const rl = {none:'😊 No reaction',mild:'😕 Mild',moderate:'😟 Moderate',severe:'🚨 Severe'}[log.reaction]||'No reaction';
+    return `<div class="log-card">
+      <div class="log-icon">${a.emoji}</div>
+      <div class="log-body">
+        <div class="log-top"><span class="log-name">${a.name}</span><span class="log-time">${ts}</span></div>
+        ${log.amount?`<div class="log-amount">${log.amount}</div>`:''}
+        <span class="log-tag tag-${log.reaction||'none'}">${rl}</span>
+        ${log.notes?`<div class="log-amount" style="margin-top:4px">${log.notes}</div>`:''}
+      </div>
+      <button class="delete-btn" onclick="deleteLog(${log.id})" title="Delete">🗑</button>
+    </div>`;
+  }).join('');
+}
+
+function deleteLog(id) {
+  pendingDeleteId = id;
+  document.getElementById('deleteModal').classList.add('open');
+}
+
+function confirmDelete() {
+  if (!pendingDeleteId) return;
+  saveData(getData().filter(l => l.id !== pendingDeleteId));
+  pendingDeleteId = null;
+  closeModal('deleteModal');
+  renderHistory();
+  renderDashboard();
+  showToast('Log deleted');
+}
+
+let pendingDeleteId = null;
+
+function openLogModal(prefillId) {
+  selectedAllergen = prefillId||null; selectedReaction='none';
+  setNow();
+  document.getElementById('logAmount').value=''; document.getElementById('logNotes').value='';
+  document.querySelectorAll('.reaction-btn').forEach(b=>b.classList.remove('selected'));
+  document.querySelector('[data-reaction="none"]').classList.add('selected');
+
+  const picker = document.getElementById('allergenPicker');
+  const subtitle = document.getElementById('logModalSubtitle');
+
+  if (prefillId) {
+    // Coming from a card tap — skip the picker
+    picker.style.display = 'none';
+    const a = ALLERGENS.find(x => x.id === prefillId);
+    subtitle.textContent = `Logging ${a.emoji} ${a.name}`;
+  } else {
+    // Coming from the FAB — show the full picker
+    picker.style.display = '';
+    subtitle.textContent = 'Which allergen did baby have today?';
+    picker.innerHTML = ALLERGENS.map(a=>
+      `<button class="allergen-pick-btn" onclick="selectAllergen('${a.id}',this)">
+        <span class="pe">${a.emoji}</span><span class="pn">${a.name}</span>
+      </button>`).join('');
+  }
+
+  document.getElementById('logFormFields').style.display = prefillId?'':'none';
+  document.getElementById('logSaveBtn').style.display = prefillId?'':'none';
+  openModal('logModal');
+}
+
+function selectAllergen(id, btn) {
+  selectedAllergen=id;
+  document.querySelectorAll('.allergen-pick-btn').forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');
+  document.getElementById('logFormFields').style.display='';
+  document.getElementById('logSaveBtn').style.display='';
+}
+
+function selectReaction(btn) {
+  selectedReaction=btn.dataset.reaction;
+  document.querySelectorAll('.reaction-btn').forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+
+function saveLog() {
+  if (!selectedAllergen) return;
+  const logs=getData();
+  logs.push({ id:Date.now(), allergenId:selectedAllergen, datetime:document.getElementById('logDateTime').value, amount:document.getElementById('logAmount').value.trim(), reaction:selectedReaction, notes:document.getElementById('logNotes').value.trim() });
+  saveData(logs); closeModal('logModal'); renderDashboard(); renderHistory();
+  const a=ALLERGENS.find(x=>x.id===selectedAllergen);
+  showToast(`${a.emoji} ${a.name} logged!`);
+}
+
+function openDetail(allergenId) {
+  const a=ALLERGENS.find(x=>x.id===allergenId);
+  const logs=getData();
+  const ml=logs.filter(l=>l.allergenId===allergenId).sort((x,y)=>new Date(y.datetime)-new Date(x.datetime));
+  const s=getAllergenStatus(a,logs);
+  const recent=ml.slice(0,5).map(log=>{
+    const dt=new Date(log.datetime);
+    const ts=dt.toLocaleDateString('en-CA',{month:'short',day:'numeric'})+' · '+dt.toLocaleTimeString('en-CA',{hour:'numeric',minute:'2-digit'});
+    const rl={none:'😊 No reaction',mild:'😕 Mild',moderate:'😟 Moderate',severe:'🚨 Severe'}[log.reaction]||'No reaction';
+    return `<div class="log-card" style="margin-bottom:8px">
+      <div class="log-body" style="width:100%">
+        <div class="log-top"><span class="log-name">${log.amount||'Feeding'}</span><span class="log-time">${ts}</span></div>
+        <span class="log-tag tag-${log.reaction||'none'}">${rl}</span>
+        ${log.notes?`<div class="log-amount" style="margin-top:4px">${log.notes}</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('detailModalContent').innerHTML=`
+    <div class="modal-handle"></div>
+    <div class="detail-photo">${a.emoji}</div>
+    <div class="detail-name">${a.name}</div>
+    <div class="detail-target">Target: ${a.targetPerWeek}× per week</div>
+    <div class="stat-row">
+      <div class="stat-box"><span class="stat-val">${ml.length}</span><span class="stat-lbl">Total</span></div>
+      <div class="stat-box"><span class="stat-val">${s.weeksFeedings}</span><span class="stat-lbl">This week</span></div>
+      <div class="stat-box"><span class="stat-val">${s.daysSince!==null?(s.daysSince===0?'Today':s.daysSince+'d'):'—'}</span><span class="stat-lbl">Last fed</span></div>
+    </div>
+    ${ml.length?`<div class="recent-heading">Recent feedings</div>${recent}`:'<div class="history-empty" style="padding:20px 0">No feedings logged yet.</div>'}
+    <button class="btn-primary" onclick="closeModal('detailModal');openLogModal('${a.id}')">+ Log a feeding</button>
+    <button class="btn-secondary" onclick="closeModal('detailModal')">Close</button>`;
+  openModal('detailModal');
+}
+
+function openNameModal() { document.getElementById('babyNameInput').value=getBabyName()||''; openModal('nameModal'); }
+function saveBabyName() { const v=document.getElementById('babyNameInput').value.trim(); if(v) localStorage.setItem('baby_name',v); updateHeader(); closeModal('nameModal'); }
+function updateHeader() { document.getElementById('headerName').textContent=getBabyName()||'My Baby'; }
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
+
+function showToast(msg) { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
+
+// ── Quick log (long press) ────────────────────────────────────────────────
+function quickLog(allergenId) {
+  const a = ALLERGENS.find(x => x.id === allergenId);
+  if (!a) return;
+  const logs = getData();
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  logs.push({ id: Date.now(), allergenId, datetime: now.toISOString().slice(0,16), amount: '', reaction: 'none', notes: '' });
+  saveData(logs);
+  renderDashboard();
+  renderHistory();
+  showToast(`${a.emoji} ${a.name} logged — no reaction!`);
+}
+
+// Long press detection
+let pressTimer = null;
+let pressTarget = null;
+
+document.addEventListener('touchstart', e => {
+  const card = e.target.closest('.allergen-photo-card');
+  if (!card) return;
+  // Don't trigger on the + button or overlay buttons
+  if (e.target.closest('button')) return;
+  pressTarget = card;
+  card.classList.add('pressing');
+  pressTimer = setTimeout(() => {
+    pressTimer = null;
+    card.classList.remove('pressing');
+    const id = card.dataset.id;
+    if (id) { navigator.vibrate && navigator.vibrate(40); quickLog(id); }
+  }, 600);
+}, { passive: true });
+
+document.addEventListener('touchend', e => {
+  if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+  if (pressTarget) { pressTarget.classList.remove('pressing'); pressTarget = null; }
+}, { passive: true });
+
+document.addEventListener('touchmove', e => {
+  if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+  if (pressTarget) { pressTarget.classList.remove('pressing'); pressTarget = null; }
+}, { passive: true });
+
+function exportCSV() {
+  const logs=getData().sort((a,b)=>new Date(a.datetime)-new Date(b.datetime));
+  if(!logs.length){showToast('No data to export yet');return;}
+  const headers=['Date','Time','Allergen','Amount','Reaction','Notes'];
+  const rows=logs.map(log=>{
+    const a=ALLERGENS.find(x=>x.id===log.allergenId);
+    const dt=new Date(log.datetime);
+    return [dt.toLocaleDateString('en-CA'),dt.toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit'}),a?a.name:log.allergenId,`"${(log.amount||'').replace(/"/g,'""')}"`,{none:'None',mild:'Mild',moderate:'Moderate',severe:'Severe'}[log.reaction]||'None',`"${(log.notes||'').replace(/"/g,'""')}"`].join(',');
+  });
+  const blob=new Blob([[headers.join(','),...rows].join('\n')],{type:'text/csv'});
+  const url=URL.createObjectURL(blob);
+  const link=document.createElement('a');
+  link.href=url;
+  const bn=getBabyName()?getBabyName().toLowerCase().replace(/\s+/g,'-')+'-':'';
+  link.download=`${bn}allergen-log-${new Date().toISOString().slice(0,10)}.csv`;
+  link.click(); URL.revokeObjectURL(url); showToast('CSV exported!');
+}
+</script>
+</body>
+</html>
